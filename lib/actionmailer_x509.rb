@@ -43,29 +43,31 @@ module ActionMailer #:nodoc:
 
     @@default_x509_sign_and_crypt_method = :smime
 
-    # Should we sign the outgoing mail?
-    cattr_accessor :x509_sign
-
-    # Should we crypt the outgoing mail?
-    cattr_accessor :x509_crypt
-
-    # Which certificate will be used for signing.
-    cattr_accessor :x509_sign_cert
-
-    # Which private key will be used for signing.
-    cattr_accessor :x509_sign_key
-
-    # Which certificate will be used for crypting.
-    cattr_accessor :x509_crypt_cert
-
-    # Which encryption algorithm will be used for crypting.
-    cattr_accessor :x509_crypt_cipher
-
-    # Which signing method is used. NOTE: For later, if needed.
-    cattr_accessor :x509_sign_and_crypt_method
-
-    # Passphrase for the sign key, if needed.
-    cattr_accessor :x509_sign_passphrase
+    class << self
+      # Should we sign the outgoing mail?
+      attr_accessor :x509_sign
+  
+      # Should we crypt the outgoing mail?
+      attr_accessor :x509_crypt
+  
+      # Which certificate will be used for signing.
+      attr_accessor :x509_sign_cert
+  
+      # Which private key will be used for signing.
+      attr_accessor :x509_sign_key
+  
+      # Which certificate will be used for crypting.
+      attr_accessor :x509_crypt_cert
+  
+      # Which encryption algorithm will be used for crypting.
+      attr_accessor :x509_crypt_cipher
+  
+      # Which signing method is used. NOTE: For later, if needed.
+      attr_accessor :x509_sign_and_crypt_method
+  
+      # Passphrase for the sign key, if needed.
+      attr_accessor :x509_sign_passphrase
+    end
 
     # We replace the initialize methods and run a new method if signing or crypting is required
     def initialize_with_sign_and_crypt(method_name, *parameters)
