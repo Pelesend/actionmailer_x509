@@ -44,28 +44,28 @@ module ActionMailer #:nodoc:
     @@default_x509_sign_and_crypt_method = :smime
 
     # Should we sign the outgoing mail?
-    attr_accessor :x509_sign
+    cattr_accessor :x509_sign
 
     # Should we crypt the outgoing mail?
-    attr_accessor :x509_crypt
+    cattr_accessor :x509_crypt
 
     # Which certificate will be used for signing.
-    attr_accessor :x509_sign_cert
+    cattr_accessor :x509_sign_cert
 
     # Which private key will be used for signing.
-    attr_accessor :x509_sign_key
+    cattr_accessor :x509_sign_key
 
     # Which certificate will be used for crypting.
-    attr_accessor :x509_crypt_cert
+    cattr_accessor :x509_crypt_cert
 
     # Which encryption algorithm will be used for crypting.
-    attr_accessor :x509_crypt_cipher
+    cattr_accessor :x509_crypt_cipher
 
     # Which signing method is used. NOTE: For later, if needed.
-    attr_accessor :x509_sign_and_crypt_method
+    cattr_accessor :x509_sign_and_crypt_method
 
     # Passphrase for the sign key, if needed.
-    attr_accessor :x509_sign_passphrase
+    cattr_accessor :x509_sign_passphrase
 
     # We replace the initialize methods and run a new method if signing or crypting is required
     def initialize_with_sign_and_crypt(method_name, *parameters)
