@@ -30,50 +30,51 @@
 require 'actionmailer_x509/railtie' if defined?(Rails)
 require "openssl"
 
-module ActionMailer #:nodoc:
+module ActionMailer
   class Base #:nodoc:
-    @@default_x509_sign = false
-    @@default_x509_sign_cert = nil
-    @@default_x509_sign_key = nil
-    @@default_x509_sign_passphrase = nil
+    # Should we sign the outgoing mail?
+    attr_accessor :x509_sign
 
-    @@default_x509_crypt = false
-    @@default_x509_crypt_cert = nil
-    @@default_x509_crypt_cipher = "des"
+    # Should we crypt the outgoing mail?
+    attr_accessor :x509_crypt
 
-    @@default_x509_sign_and_crypt_method = :smime
+    # Which certificate will be used for signing.
+    attr_accessor :x509_sign_cert
 
-    class << self
-      # Should we sign the outgoing mail?
-      attr_accessor :x509_sign
-  
-      # Should we crypt the outgoing mail?
-      attr_accessor :x509_crypt
-  
-      # Which certificate will be used for signing.
-      attr_accessor :x509_sign_cert
-  
-      # Which private key will be used for signing.
-      attr_accessor :x509_sign_key
-  
-      # Which certificate will be used for crypting.
-      attr_accessor :x509_crypt_cert
-  
-      # Which encryption algorithm will be used for crypting.
-      attr_accessor :x509_crypt_cipher
-  
-      # Which signing method is used. NOTE: For later, if needed.
-      attr_accessor :x509_sign_and_crypt_method
-  
-      # Passphrase for the sign key, if needed.
-      attr_accessor :x509_sign_passphrase
+    # Which private key will be used for signing.
+    attr_accessor :x509_sign_key
+
+    # Which certificate will be used for crypting.
+    attr_accessor :x509_crypt_cert
+
+    # Which encryption algorithm will be used for crypting.
+    attr_accessor :x509_crypt_cipher
+
+    # Which signing method is used. NOTE: For later, if needed.
+    attr_accessor :x509_sign_and_crypt_method
+
+    # Passphrase for the sign key, if needed.
+    attr_accessor :x509_sign_passphrase
+
+    def x509_sign
+      @x509_sign || false
+    end
+
+    def x509_crypt
+      @x509_crypt || false
+    end
+
+    def x509_crypt_cipher
+      @x509_crypt_cipher || 'des'  
+    end
+
+    def x509_sign_and_crypt_method
+      @x509_sign_and_crypt_method || :smime
     end
 
     # We replace the initialize methods and run a new method if signing or crypting is required
     def initialize_with_sign_and_crypt(method_name, *parameters)
       mail = initialize_without_sign_and_crypt(method_name, *parameters)
-
-      x509_initvar()
 
       # If we need to sign the outgoing mail.
       if should_sign? or should_crypt?
@@ -82,7 +83,6 @@ module ActionMailer #:nodoc:
         end
         __send__("x509_#{@x509_sign_and_crypt_method}", mail)
       end
-
     end
     alias_method_chain :initialize, :sign_and_crypt
 
@@ -198,18 +198,6 @@ module ActionMailer #:nodoc:
         end
       end
       return false
-    end
-
-    # Initiate from the default class attributes
-    def x509_initvar
-      @x509_sign_and_crypt_method ||= @@default_x509_sign_and_crypt_method
-      @x509_sign                  ||= @@default_x509_sign
-      @x509_crypt                 ||= @@default_x509_crypt
-      @x509_crypt_cert            ||= @@default_x509_crypt_cert
-      @x509_crypt_cipher          ||= @@default_x509_crypt_cipher
-      @x509_sign_cert             ||= @@default_x509_sign_cert
-      @x509_key                   ||= @@default_x509_sign_key
-      @x509_sign_passphrase       ||= @@default_x509_sign_passphrase
     end
   end
 end
