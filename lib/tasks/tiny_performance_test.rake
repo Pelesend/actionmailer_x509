@@ -6,7 +6,7 @@
 
 require 'rake'
 require 'rake/testtask'
-require 'rake/rdoctask'
+require 'rdoc/task'
 require "openssl"
 
 def sign_single_body_pipe
