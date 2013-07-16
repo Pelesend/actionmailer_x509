@@ -39,7 +39,7 @@ module ActionMailer #:nodoc:
       sign_passphrase: "hisp",
       crypt_cert: "certs/ca.crt",
       crypt_cipher: 'des'
-    }.freeze
+    }
 
     # unfortinately, we should run really deep here
     # and overwrite initializer
