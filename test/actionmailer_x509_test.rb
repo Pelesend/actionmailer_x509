@@ -3,17 +3,14 @@ require 'test/unit'
 require 'helper'
 require_relative '../init'
 
-$:.unshift('../' + File.dirname(__FILE__) + '/lib/certs')
-
 class ActionmailerX509Test < Test::Unit::TestCase #:nodoc:
-
-  root = '../' + File.dirname(__FILE__)
-  @server_crt = "lib/certs/server.crt"
-  @server_key = "lib/certs/server.key"
-  @ca_file = "lib/certs/ca.crt"
-
   # If we want to encrypt a message, verify a signature is attached
   def test_signed_and_crypted
+    root = File.dirname(File.expand_path(__FILE__)) + '/../' + 'lib/certs/'
+    @server_crt = "#{root}server.crt"
+    @server_key = "#{root}server.key"
+    @ca_file = "#{root}ca.crt"
+
     mail = Notifier.fufu_signed_and_crypted("<destination@foobar.com>", "<demo@foobar.com>")
 
     assert_match /application\/x-pkcs7-mime/, mail.content_type
@@ -23,8 +20,8 @@ class ActionmailerX509Test < Test::Unit::TestCase #:nodoc:
     tf = Tempfile.new('actionmailer_x509')
     tf.write mail.encoded
     tf.flush
-
-    comm = "cd ..; pwd; openssl smime -decrypt -in #{tf.path} -recip #{@server_crt} -inkey #{@server_key} -passin pass:demo | openssl smime -verify -CAfile #{@ca_file} 2>&1"
+    
+    comm = "openssl smime -decrypt -in #{tf.path} -recip #{@server_crt} -inkey #{@server_key} -passin pass:demo | openssl smime -verify -CAfile #{@ca_file} 2>&1"
    
     success = false
     output = IO.popen(comm)
