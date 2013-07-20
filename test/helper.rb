@@ -40,3 +40,9 @@ ActionMailer::Base.smtp_settings = {
     :enable_starttls_auto => true
 }
 
+module Test::Unit::Assertions
+  def assert_contains(expected_substring, string, *args)
+    assert string.include?(expected_substring), 'not includes given substring'
+  end
+end
+

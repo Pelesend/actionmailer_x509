@@ -72,20 +72,7 @@ module ActionMailer #:nodoc:
       smime0 = OpenSSL::PKCS7::write_smime(p7)
 
       # Adding the signature part to the older mail
-      newm = Mail.new(smime0)
-
-      # We need to overwrite the content-type of the mail so MUA notices this is a signed mail
-      # newm.content_type = 'multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1; '
-      newm.delivery_method(message.delivery_method.class, message.delivery_method.settings)
-      newm.subject = message.subject
-      newm.to = message.to
-      newm.cc = message.cc
-      newm.from = message.from
-      newm.mime_version = message.mime_version
-      newm.date = message.date
-      newm.body = "This is an S/MIME signed message\n"
-
-      newm
+      Mail.new(smime0)
     end
   end
 end

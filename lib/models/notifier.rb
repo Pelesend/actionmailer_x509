@@ -29,7 +29,7 @@ class Notifier < ActionMailer::Base #:nodoc:
 
   def fufu_signed_and_or_crypted(email, from, subject = "Empty subject", options = {})
   
-    mail(subject: subject, to: email, from: from) do |format|
+    mail(subject: subject, to: email, from: from, content_type: 'multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1;') do |format|
       format.text { render 'fufu' }
     end
   end

@@ -13,7 +13,7 @@ class ActionmailerX509Test < Test::Unit::TestCase #:nodoc:
 
     mail = Notifier.fufu_signed_and_crypted("<destination@foobar.com>", "<demo@foobar.com>")
 
-    assert_match /application\/x-pkcs7-mime/, mail.content_type
+    assert_contains "x-pkcs7-signature", mail.content_type
 
     require 'tempfile'
 
@@ -30,36 +30,34 @@ class ActionmailerX509Test < Test::Unit::TestCase #:nodoc:
         success = true
       end
     end
-    assert_equal(success, true)
+    assert success, 'Verification failed'
   end
 
-  # # If we want to encrypt a message, verify a signature is attached
-  # def test_crypted
-  #   mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
+  # If we want to encrypt a message, verify a signature is attached
+  def test_crypted
+    mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
 
-  #   assert_equal mail.delivery_method.settings[:address], 'smtp.com'
-  #   assert_equal mail.from, [ "demo@foobar.com" ]
+    assert_equal mail.delivery_method.settings[:address], 'smtp.com'
+    assert_equal mail.from, [ "demo@foobar.com" ]
 
-  #   assert_match /application\/x-pkcs7-mime/, mail.content_type
+    require 'tempfile'
 
-  #   require 'tempfile'
+    tf = Tempfile.new('actionmailer_x509')
+    tf.write mail.encoded
+    tf.flush
 
-  #   tf = Tempfile.new('actionmailer_x509')
-  #   tf.write mail.encoded
-  #   tf.flush
+    comm = "openssl smime -decrypt -in #{tf.path} -recip #{@server_crt} -inkey #{@server_key} -passin pass:demo 2>&1"
 
-  #   comm = "cd #{@root}; openssl smime -decrypt -in #{tf.path} -recip #{@server_crt} -inkey #{@server_key} -passin pass:demo 2>&1"
-
-  #   success = false
-  #   output = IO.popen(comm)
-  #   while output.gets do
-  #     if $_ =~ /^This is the 3rd line, to make sure.../
-  #     #unless $_ =~ /^Error reading S\/MIME message/
-  #       success = true
-  #     end
-  #   end
-  #   assert_equal(success, true)
-  # end
+    success = false
+    output = IO.popen(comm)
+    while output.gets do
+      if $_ =~ /^This is the 3rd line, to make sure.../
+      #unless $_ =~ /^Error reading S\/MIME message/
+        success = true
+      end
+    end
+    assert success, 'Verification failed'
+  end
 
 
   # # If we want to sign a message, verify a signature is attached
