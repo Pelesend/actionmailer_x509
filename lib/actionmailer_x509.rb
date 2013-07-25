@@ -28,6 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 require 'actionmailer_x509/railtie' if defined?(Rails)
+require 'actionmailer_x509/x509'
 require 'openssl'
 
 module ActionMailer #:nodoc:
@@ -40,6 +41,8 @@ module ActionMailer #:nodoc:
       sign_passphrase: 'hisp',
       crypt_enable: true,
       crypt_cert: 'certs/ca.crt',
+      crypt_key: 'certs/ca.key',
+      crypt_passphrase: 'hisp',
       crypt_cipher: 'des'
     }
 
@@ -50,29 +53,34 @@ module ActionMailer #:nodoc:
       x509_smime(message)
     end
 
-    #def decode(raw_mail)
-    #
-    #end
+    def decode(raw_mail)
+      x509_crypt = ActionMailerX509::X509.new(
+          self.x509[:crypt_cert],
+          self.x509[:crypt_key],
+          self.x509[:crypt_passphrase],
+          self.x509[:crypt_cipher])
+      x509_crypt.decode(raw_mail)
+    end
 
   private
     # X509 SMIME signing and\or crypting
     def x509_smime(message)
       if self.x509[:sign_enable] || self.x509[:crypt_enable]
+        x509_crypt = ActionMailerX509::X509.new(
+            self.x509[:crypt_cert],
+            self.x509[:crypt_key],
+            self.x509[:crypt_passphrase],
+            self.x509[:crypt_cipher])
+
+        x509_sign = ActionMailerX509::X509.new(
+            self.x509[:sign_cert],
+            self.x509[:sign_key],
+            self.x509[:sign_passphrase])
+
         # NOTE: the one following line is the slowest part of this code, signing is sloooow
         p7 = message.encoded
-
-        if self.x509[:sign_enable]
-          # Load certificate and private key
-          sign_cert = OpenSSL::X509::Certificate.new( File::read(self.x509[:sign_cert]) )
-          sign_prv_key = OpenSSL::PKey::RSA.new( File::read(self.x509[:sign_key]), self.x509[:sign_passphrase])
-          p7 = OpenSSL::PKCS7::write_smime(OpenSSL::PKCS7.sign(sign_cert, sign_prv_key, p7, [], OpenSSL::PKCS7::DETACHED))
-        end
-
-        if self.x509[:crypt_enable]
-          crypt_cert = OpenSSL::X509::Certificate.new( File::read(self.x509[:crypt_cert]) )
-          cipher = OpenSSL::Cipher.new(self.x509[:crypt_cipher])
-          p7 = OpenSSL::PKCS7::write_smime(OpenSSL::PKCS7.encrypt([crypt_cert], p7, cipher, nil))
-        end
+        p7 = x509_sign.sign(p7) if self.x509[:sign_enable]
+        p7 = x509_crypt.encode(p7) if self.x509[:crypt_enable]
 
         message.body = ''
         create_parts_from_responses(message, [
