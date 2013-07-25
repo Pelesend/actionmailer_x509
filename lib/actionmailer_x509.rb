@@ -28,51 +28,58 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 require 'actionmailer_x509/railtie' if defined?(Rails)
-require "openssl"
+require 'openssl'
 
 module ActionMailer #:nodoc:
   class Base #:nodoc:
     class_attribute :x509
     self.x509 = {
-      sign_cert: "certs/server.crt",
-      sign_key: "certs/server.key",        
-      sign_passphrase: "hisp",
-      crypt_cert: "certs/ca.crt",
+      sign_enable: true,
+      sign_cert: 'certs/server.crt',
+      sign_key: 'certs/server.key',
+      sign_passphrase: 'hisp',
+      crypt_enable: true,
+      crypt_cert: 'certs/ca.crt',
       crypt_cipher: 'des'
     }
 
-    # unfortinately, we should run really deep here
-    # and overwrite initializer
-    # to get @_message object
-    def initialize(method_name=nil, *args)
-      super()
-      @_mail_was_called = false
-      @_message = x509_smime(Mail.new)
-      process(method_name, *args) if method_name
+    alias_method :old_mail, :mail
+
+    def mail(headers = {}, &block)
+      message = old_mail(headers, &block)
+      x509_smime(message)
     end
 
   private
     # X509 SMIME signing and\or crypting
     def x509_smime(message)
-      # We should set content_id, otherwise Mail will set content_id after signing and will broke sign
-      message.content_id ||= nil
-      message.parts.each { |p| p.content_id ||= nil }
+      if self.x509[:sign_enable] || self.x509[:crypt_enable]
+        # NOTE: the one following line is the slowest part of this code, signing is sloooow
+        p7 = message.encoded
 
-      # Load certificate and private key
-      sign_cert = OpenSSL::X509::Certificate.new( File::read(self.x509[:sign_cert]) )
-      sign_prv_key = OpenSSL::PKey::RSA.new( File::read(self.x509[:sign_key]), self.x509[:sign_passphrase])
-      crypt_cert = OpenSSL::X509::Certificate.new( File::read(self.x509[:crypt_cert]) )
-      cipher = OpenSSL::Cipher.new(self.x509[:crypt_cipher])
-      
+        if self.x509[:sign_enable]
+          # Load certificate and private key
+          sign_cert = OpenSSL::X509::Certificate.new( File::read(self.x509[:sign_cert]) )
+          sign_prv_key = OpenSSL::PKey::RSA.new( File::read(self.x509[:sign_key]), self.x509[:sign_passphrase])
+          p7 = OpenSSL::PKCS7::write_smime(OpenSSL::PKCS7.sign(sign_cert, sign_prv_key, p7, [], OpenSSL::PKCS7::DETACHED))
+        end
 
-      # NOTE: the one following line is the slowest part of this code, signing is sloooow
-      p7 = message.encoded
-      p7 = OpenSSL::PKCS7.sign(sign_cert,sign_prv_key, p7, [], OpenSSL::PKCS7::DETACHED)
-      p7 = OpenSSL::PKCS7.encrypt([crypt_cert], OpenSSL::PKCS7::write_smime(p7), cipher, nil)
-      smime0 = OpenSSL::PKCS7::write_smime(p7)
+        if self.x509[:crypt_enable]
+          crypt_cert = OpenSSL::X509::Certificate.new( File::read(self.x509[:crypt_cert]) )
+          cipher = OpenSSL::Cipher.new(self.x509[:crypt_cipher])
+          p7 = OpenSSL::PKCS7::write_smime(OpenSSL::PKCS7.encrypt([crypt_cert], p7, cipher, nil))
+        end
 
-      # Adding the signature part to the older mail
-      Mail.new(smime0)
+        message.body = ''
+        create_parts_from_responses(message, [
+            {
+                body: p7,
+                content_disposition: 'attachment; filename="smime.p7m"',
+                content_type: 'multipart/mixed'
+            }
+        ])
+      end
+      message
     end
   end
 end
