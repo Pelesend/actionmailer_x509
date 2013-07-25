@@ -50,6 +50,10 @@ module ActionMailer #:nodoc:
       x509_smime(message)
     end
 
+    #def decode(raw_mail)
+    #
+    #end
+
   private
     # X509 SMIME signing and\or crypting
     def x509_smime(message)

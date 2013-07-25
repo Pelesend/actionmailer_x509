@@ -16,3 +16,4 @@ tmp/**/*
 rerun.txt
 .bundle\n
 .rvmrc
+.idea/
