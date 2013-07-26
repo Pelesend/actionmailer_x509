@@ -77,10 +77,7 @@ module ActionMailer #:nodoc:
             self.x509[:sign_key],
             self.x509[:sign_passphrase])
 
-        # NOTE: the one following line is the slowest part of this code, signing is sloooow
-        p7 = message.encoded
-
-        p7 = x509_sign.sign(p7) if self.x509[:sign_enable]
+        @signed = x509_sign.sign(message.encoded) if self.x509[:sign_enable]
 
         #if self.x509[:sign_enable]
         #  p7 = x509_sign.sign(p7)
@@ -93,11 +90,10 @@ module ActionMailer #:nodoc:
         #    end
         #  end
         #end
-        p7 = x509_crypt.encode(p7) if self.x509[:crypt_enable]
+        @coded = x509_crypt.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
 
-        p = Mail.new(p7)
+        p = Mail.new(@coded || @signed)
         # Patch: Mail header fields are not updated correctly
-        #message.header["Content-Transfer-Encoding"] = nil
         p.header.fields.each {|field| message.header[field.name] = field.value}
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       end
