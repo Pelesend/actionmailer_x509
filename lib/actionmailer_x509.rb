@@ -54,50 +54,41 @@ module ActionMailer #:nodoc:
     end
 
     def self.decode(raw_mail)
-      x509_crypt = ActionMailerX509::X509.new(
-          self.x509[:crypt_cert],
-          self.x509[:crypt_key],
-          self.x509[:crypt_passphrase],
-          self.x509[:crypt_cipher])
-      x509_crypt.decode(raw_mail)
+      get_crypter.decode(raw_mail)
     end
 
   private
     # X509 SMIME signing and\or crypting
     def x509_smime(message)
       if self.x509[:sign_enable] || self.x509[:crypt_enable]
-        x509_crypt = ActionMailerX509::X509.new(
-            self.x509[:crypt_cert],
-            self.x509[:crypt_key],
-            self.x509[:crypt_passphrase],
-            self.x509[:crypt_cipher])
-
-        x509_sign = ActionMailerX509::X509.new(
-            self.x509[:sign_cert],
-            self.x509[:sign_key],
-            self.x509[:sign_passphrase])
-
-        @signed = x509_sign.sign(message.encoded) if self.x509[:sign_enable]
-
-        #if self.x509[:sign_enable]
-        #  p7 = x509_sign.sign(p7)
-        #
-        #  newm = Mail.new(p7)
-        #  for part in newm.parts do
-        #    if part.content_type == 'application/x-pkcs7-signature'
-        #      @sign_block = part
-        #      break
-        #    end
-        #  end
-        #end
-        @coded = x509_crypt.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
+        @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
+        @coded = get_crypter.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
 
         p = Mail.new(@coded || @signed)
-        # Patch: Mail header fields are not updated correctly
         p.header.fields.each {|field| message.header[field.name] = field.value}
-        message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
+
+        if @coded
+          message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
+        else
+          message.body = p.body.to_s
+        end
       end
       message
+    end
+
+    def get_crypter
+      ActionMailerX509::X509.new(
+          self.x509[:crypt_cert],
+          self.x509[:crypt_key],
+          self.x509[:crypt_passphrase],
+          self.x509[:crypt_cipher])
+    end
+
+    def get_signer
+      ActionMailerX509::X509.new(
+          self.x509[:sign_cert],
+          self.x509[:sign_key],
+          self.x509[:sign_passphrase])
     end
   end
 end

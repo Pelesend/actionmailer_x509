@@ -2,6 +2,7 @@ require 'rake'
 require 'rake/testtask'
 require 'rdoc/task'
 require 'models/notifier'
+require 'actionmailer_x509/x509'
 
 
 namespace :actionmailer_x509 do
@@ -17,17 +18,64 @@ namespace :actionmailer_x509 do
       puts "#{File.dirname(__FILE__)}/../certs/ca.crt"
       puts "as an authority in your MUA. Remove it after your test!!!\n\n"
       puts "Emailing <#{email}>"
-      if ENV['signed']
-        signed = Boolean(ENV['signed'])
-      else
-        signed = true
-      end
-      crypted = ENV['crypted']
 
-      Notifier.fufu_signed_and_or_crypted(email, "demo@foobar.com", "Signed mail at #{Time.now.to_s}", {:signed => signed, :crypted => crypted}).deliver
+      signed = if ENV['signed']
+        Boolean(ENV['signed'])
+      end || false
+      crypted = Boolean(ENV['crypted'])
+
+      noty = Notifier.fufu_signed_and_or_crypted(email, "demo@foobar.com", "Signed mail at #{Time.now.to_s}", {:signed => signed, :crypted => crypted})
+      noty.deliver
     end
   end
 
+  desc "Generates a signed mail in a file."
+  task(:generate_signed_mail => :environment) do
+    mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
+    path = ENV['mail']
+    path = "tmp/signed_mail.txt" if path.nil?
+    File.open(path, "w") do |f|
+      f.write mail.body
+    end
+    puts "Signed mail is at #{path}."
+    puts "You can use mail=filename as argument to change it." if ENV['mail'].nil?
+  end
+
+  desc "Check if signature is valid."
+  task(:verify_signature => :environment) do
+    require 'tempfile'
+    mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
+
+    coded = ActionMailerX509::X509.new(
+        Notifier.x509[:crypt_cert],
+        Notifier.x509[:crypt_key],
+        Notifier.x509[:crypt_passphrase],
+        Notifier.x509[:crypt_cipher]).decode(mail.encoded)
+
+    puts "Verifycation is #{coded == Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>").encoded}"
+
+
+    #tf = Tempfile.new('actionmailer_x509')
+    #tf.write mail.encoded
+    #tf.flush
+
+    #comm = "openssl smime -verify -in #{tf.path} -CAfile #{File.dirname(__FILE__)}/../certs/ca.crt > /dev/null"
+    #
+    #puts "Using openssl command to verify signature..."
+    #system(comm)
+  end
+
+  desc "Generates a crypted mail in a file."
+  task(:generate_crypted_mail => :environment) do
+    mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
+    path = ENV['mail']
+    path = "tmp/signed_mail.txt" if path.nil?
+    File.open(path, "w") do |f|
+      f.write mail.body
+    end
+    puts "Crypted mail is at #{path}."
+    puts "You can use mail=filename as argument to change it." if ENV['mail'].nil?
+  end
 
   desc "Performance test."
   task(:performance_test => :environment) do
@@ -46,34 +94,6 @@ namespace :actionmailer_x509 do
         end
       }
     end
-  end
-
-  desc "Generates a signed mail in a file."
-  task(:generate_mail => :environment) do
-    mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
-    path = ENV['mail']
-    path = "tmp/signed_mail.txt" if path.nil?
-    File.open(path, "w") do |f|
-      f.write mail.encoded
-    end
-    puts "Signed mail is at #{path}."
-    puts "You can use mail=filename as argument to change it." if ENV['mail'].nil?
-  end
-
-  desc "Check if signature is valid."
-  task(:verify_signature => :environment) do
-    require 'tempfile'
-    mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
-
-    tf = Tempfile.new('actionmailer_x509')
-    tf.write mail.encoded
-    tf.flush
-
-    comm = "openssl smime -verify -in #{tf.path} -CAfile #{File.dirname(__FILE__)}/../lib/certs/ca.crt > /dev/null"
-
-    puts "Using openssl command to verify signature..."
-    system(comm)
-
   end
 end
 

@@ -6,7 +6,9 @@ class Notifier < ActionMailer::Base #:nodoc:
     sign_cert: "lib/certs/server.crt",
     sign_key: "lib/certs/server.key",        
     sign_passphrase: "demo",
+    crypt_key: "lib/certs/ca.key",
     crypt_cert: "lib/certs/ca.crt",
+    crypt_passphrase: 'demo',
     crypt_cipher: 'des'
   }
 
@@ -15,21 +17,22 @@ class Notifier < ActionMailer::Base #:nodoc:
   end
 
   def fufu_signed(email, from, subject = "Empty subject for signed")
-    fufu_signed_and_or_crypted(email, from, subject, { signed: true }, self.x509[:sign_cert], self.x509[:sign_key])
+    fufu_signed_and_or_crypted(email, from, subject,  {signed: true, crypted: false })
   end
 
   def fufu_crypted(email, from, subject = "Empty subject for encrypted")
-    fufu_signed_and_or_crypted(email, from, subject, crypted: true)
+    fufu_signed_and_or_crypted(email, from, subject, {signed: false, crypted: true })
   end
 
   def fufu_signed_and_crypted(email, from, subject = "Empty subject for signed and encrypted")
-
     fufu_signed_and_or_crypted(email, from, subject, { signed: true, crypted: true })
   end
 
   def fufu_signed_and_or_crypted(email, from, subject = "Empty subject", options = {})
-  
-    mail(subject: subject, to: email, from: from, content_type: 'multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1;') do |format|
+    self.x509[:crypt_enable] = options[:crypted]
+    self.x509[:sign_enable] = options[:signed]
+
+    mail(subject: subject, to: email, from: from) do |format|
       format.text { render 'fufu' }
     end
   end
