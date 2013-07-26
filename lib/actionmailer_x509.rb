@@ -97,9 +97,9 @@ module ActionMailer #:nodoc:
 
         p = Mail.new(p7)
         # Patch: Mail header fields are not updated correctly
-        message.header["Content-Transfer-Encoding"] = nil
+        #message.header["Content-Transfer-Encoding"] = nil
         p.header.fields.each {|field| message.header[field.name] = field.value}
-        message.instance_variable_set :@body_raw, p.body
+        message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       end
       message
     end
