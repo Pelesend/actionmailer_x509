@@ -53,7 +53,7 @@ module ActionMailer #:nodoc:
       x509_smime(message)
     end
 
-    def decode(raw_mail)
+    def self.decode(raw_mail)
       x509_crypt = ActionMailerX509::X509.new(
           self.x509[:crypt_cert],
           self.x509[:crypt_key],
@@ -79,17 +79,27 @@ module ActionMailer #:nodoc:
 
         # NOTE: the one following line is the slowest part of this code, signing is sloooow
         p7 = message.encoded
+
         p7 = x509_sign.sign(p7) if self.x509[:sign_enable]
+
+        #if self.x509[:sign_enable]
+        #  p7 = x509_sign.sign(p7)
+        #
+        #  newm = Mail.new(p7)
+        #  for part in newm.parts do
+        #    if part.content_type == 'application/x-pkcs7-signature'
+        #      @sign_block = part
+        #      break
+        #    end
+        #  end
+        #end
         p7 = x509_crypt.encode(p7) if self.x509[:crypt_enable]
 
-        message.body = ''
-        create_parts_from_responses(message, [
-            {
-                body: p7,
-                content_disposition: 'attachment; filename="smime.p7m"',
-                content_type: 'multipart/mixed'
-            }
-        ])
+        p = Mail.new(p7)
+        # Patch: Mail header fields are not updated correctly
+        message.header["Content-Transfer-Encoding"] = nil
+        p.header.fields.each {|field| message.header[field.name] = field.value}
+        message.instance_variable_set :@body_raw, p.body
       end
       message
     end

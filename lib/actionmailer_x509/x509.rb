@@ -19,7 +19,9 @@ module ActionMailerX509
     end
 
     def decode(encrypted_text)
-      read(encrypted_text).decrypt(@rsa_key, certificate)
+      pkcs7 = read(encrypted_text) rescue OpenSSL::PKCS7.new(encrypted_text)
+      pkcs7.decrypt(@rsa_key, certificate)
+    rescue encrypted_text
     end
 
     def sign(text)
@@ -28,9 +30,9 @@ module ActionMailerX509
     end
 
     def verify(text)
-      read(text).verify(nil, @certificate_store, nil, nil)
+      result = read(text).verify(nil, @certificate_store, nil, nil)
       #read(text).verify(nil, @certificate_store, nil, OpenSSL::PKCS7::NOVERIFY)
-      #read(text).data
+      result ? read(text).data : nil
     end
 
     protected
