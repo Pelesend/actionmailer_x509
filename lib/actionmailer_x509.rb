@@ -53,8 +53,38 @@ module ActionMailer #:nodoc:
       x509_smime(message)
     end
 
-    def self.decode(raw_mail)
-      get_crypter.decode(raw_mail)
+
+    def self.get_crypter
+      ActionMailerX509::X509.new(
+          self.x509[:crypt_cert],
+          self.x509[:crypt_key],
+          self.x509[:crypt_passphrase],
+          self.x509[:crypt_cipher])
+    end
+
+    def self.get_signer
+      ActionMailerX509::X509.new(
+          self.x509[:sign_cert],
+          self.x509[:sign_key],
+          self.x509[:sign_passphrase])
+    end
+
+    def self.proceed(mail, x509_settings={})
+      x509.reverse_merge!(x509_settings)
+
+      if mail.is_a? String
+        get_crypter.decode(mail)
+      elsif mail.is_a? Mail::Message
+        if mail.multipart?
+          if mail.parts.first.body.to_s == 'This is an S/MIME signed message'
+            sign = mail.parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
+            raise Exception.new 'Sign attach not finded'
+            get_signer.verify(sign.first.body)
+          end
+        else
+          get_crypter.decode(mail.body.to_s)
+        end
+      end || mail.body.to_s
     end
 
   private
@@ -64,10 +94,13 @@ module ActionMailer #:nodoc:
         @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
         @coded = get_crypter.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
 
+        Mail::Header
+
         p = Mail.new(@coded || @signed)
-        p.header.fields.each {|field| message.header[field.name] = field.value}
+        p.header.fields.each {|field| (message.header[field.name] = field.value)}
 
         if @coded
+          message.header["Content-Transfer-Encoding"] = 'base64'
           message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
         else
           message.body = p.body.to_s
