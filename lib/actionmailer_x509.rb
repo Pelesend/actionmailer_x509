@@ -29,103 +29,75 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 require 'actionmailer_x509/railtie' if defined?(Rails)
 require 'actionmailer_x509/x509'
+require 'actionmailer_x509/x509_wrapper'
 require 'openssl'
+
+#module String
+#def proceed(mail, x509_settings={})
+  #x509.reverse_merge!(x509_settings)
+  #
+  #if mail.is_a? String
+  #  if
+  #
+  #
+  #  result = get_crypter(x509).decode(mail)
+  #
+  #
+  #elsif mail.is_a? Mail::Message
+  #  mail.proceed(x509_settings)
+  #  #if mail.multipart?
+  #  #  if mail.parts.first.body.to_s == 'This is an S/MIME signed message'
+  #  #    signs = mail.parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
+  #  #    raise Exception.new 'Sign attach not finded' if signs.empty?
+  #  #    get_signer(x509).verify(signs.first.body.to_s)
+  #  #  end
+  #  #else
+  #  #  get_crypter(x509).decode(mail.body.to_s)
+  #  #end
+  #end || mail.to_s
+#end
+#end
 
 module Mail #:nodoc:
   class Message #:nodoc:
-    class_attribute :x509
-    self.x509 = {
-        sign_enable: true,
-        sign_cert: 'certs/server.crt',
-        sign_key: 'certs/server.key',
-        sign_passphrase: 'hisp',
-        crypt_enable: true,
-        crypt_cert: 'certs/ca.crt',
-        crypt_key: 'certs/ca.key',
-        crypt_passphrase: 'hisp',
-        crypt_cipher: 'des'
-    }
-
-    def get_crypter(attrs)
-      ActionMailerX509::X509.new(
-          attrs[:crypt_cert],
-          attrs[:crypt_key],
-          attrs[:crypt_passphrase],
-          attrs[:crypt_cipher])
-    end
-
-    def get_signer(attrs)
-      ActionMailerX509::X509.new(
-          attrs[:sign_cert],
-          attrs[:sign_key],
-          attrs[:sign_passphrase])
-    end
+    include X509Wrapper
 
     def proceed(x509_settings={})
       x509.reverse_merge!(x509_settings)
 
       if multipart?
-        if parts.first.body.to_s == 'This is an S/MIME signed message'
+        if is_signed?
           signs = parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
           raise Exception.new 'Sign attach not finded' if signs.empty?
-          get_signer(x509).verify(signs.first.body.to_s)
+          get_signer.verify(signs.first.body.to_s)
         end
       else
-        get_crypter(x509).decode(body.to_s)
+        result = get_crypter.decode(body.to_s)
+        mail = Mail.new(result)
+        if mail.is_signed?
+          mail.proceed(x509_settings)
+        else
+          result
+        end
       end
     end
+
+    #def method_missing(name, *args, &block)
+    #  if name =~ /_as_utf8\z/
+    #    self.send(name.to(name.length - 8), args).force_encoding('UTF-8') rescue ''
+    #  end
+    #end
+
+    private
+      def is_signed?
+        parts.first.body.to_s == 'This is an S/MIME signed message'
+      end
   end
 end
 
 module ActionMailer #:nodoc:
   class Base #:nodoc:
-    class_attribute :x509
-    self.x509 = {
-      sign_enable: true,
-      sign_cert: 'certs/server.crt',
-      sign_key: 'certs/server.key',
-      sign_passphrase: 'hisp',
-      crypt_enable: true,
-      crypt_cert: 'certs/ca.crt',
-      crypt_key: 'certs/ca.key',
-      crypt_passphrase: 'hisp',
-      crypt_cipher: 'des'
-    }
-
-    class << self
-      def get_crypter(attrs)
-        ActionMailerX509::X509.new(
-            attrs[:crypt_cert],
-            attrs[:crypt_key],
-            attrs[:crypt_passphrase],
-            attrs[:crypt_cipher])
-      end
-
-      def get_signer(attrs)
-        ActionMailerX509::X509.new(
-            attrs[:sign_cert],
-            attrs[:sign_key],
-            attrs[:sign_passphrase])
-      end
-
-      def proceed(mail, x509_settings={})
-        x509.reverse_merge!(x509_settings)
-
-        if mail.is_a? String
-          get_crypter(x509).decode(mail)
-        elsif mail.is_a? Mail::Message
-          if mail.multipart?
-            if mail.parts.first.body.to_s == 'This is an S/MIME signed message'
-              signs = mail.parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
-              raise Exception.new 'Sign attach not finded' if signs.empty?
-              get_signer(x509).verify(signs.first.body.to_s)
-            end
-          else
-            get_crypter(x509).decode(mail.body.to_s)
-          end
-        end || mail.body.to_s
-      end
-    end
+    include X509Wrapper
 
     alias_method :old_mail, :mail
 
@@ -138,8 +110,8 @@ module ActionMailer #:nodoc:
     # X509 SMIME signing and\or crypting
     def x509_smime(message)
       if self.x509[:sign_enable] || self.x509[:crypt_enable]
-        @signed = ActionMailer::Base.get_signer(x509).sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
-        @coded = ActionMailer::Base.get_crypter(x509).encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
+        @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
+        @coded = get_crypter.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
 
         p = Mail.new(@coded || @signed)
         p.header.fields.each {|field| (message.header[field.name] = field.value)}
