@@ -67,10 +67,8 @@ module Mail #:nodoc:
 
       if multipart?
         if is_signed?
-          signs = parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
-          raise Exception.new 'Sign attach not finded' if signs.empty?
-          get_signer.verify(signs.first.body.to_s)
-        end
+          get_signer.verify(encoded)
+        end || body.to_s
       else
         result = get_crypter.decode(body.to_s)
         mail = Mail.new(result)
@@ -88,9 +86,17 @@ module Mail #:nodoc:
     #  end
     #end
 
-    private
+    protected
       def is_signed?
-        parts.first.body.to_s == 'This is an S/MIME signed message'
+        check_parts || check_body
+      end
+
+      def check_parts
+        (parts.first.body.to_s == 'This is an S/MIME signed message') rescue false
+      end
+
+      def check_body
+        (body.to_s =~ /This is an S\/MIME signed message/).present?
       end
   end
 end

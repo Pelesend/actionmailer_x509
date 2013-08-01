@@ -19,7 +19,7 @@ module ActionMailerX509
     end
 
     def decode(encrypted_text)
-      pkcs7 = read(encrypted_text) rescue OpenSSL::PKCS7.new(encrypted_text)
+      pkcs7 = read(encrypted_text)
       pkcs7.decrypt(@rsa_key, certificate)
     #rescue
     #  encrypted_text
@@ -42,7 +42,7 @@ module ActionMailerX509
       end
 
       def read(text)
-        OpenSSL::PKCS7.read_smime text
+        OpenSSL::PKCS7.read_smime(text) rescue OpenSSL::PKCS7.new(text)
       end
   end
 end
