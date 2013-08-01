@@ -72,6 +72,7 @@ module Mail #:nodoc:
           buffer << body.to_s
 
           get_signer.verify(buffer)
+          #get_signer.verify(encoded)
         end || body.to_s
       else
         result = get_crypter.decode(body.to_s)
@@ -121,8 +122,6 @@ module ActionMailer #:nodoc:
     def x509_smime(message)
       if self.x509[:sign_enable] || self.x509[:crypt_enable]
         @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
-        puts @signed
-        puts @signed.length
         @coded = get_crypter.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
 
         p = Mail.new(@coded || @signed)
