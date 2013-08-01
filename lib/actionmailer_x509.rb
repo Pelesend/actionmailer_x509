@@ -31,6 +31,52 @@ require 'actionmailer_x509/railtie' if defined?(Rails)
 require 'actionmailer_x509/x509'
 require 'openssl'
 
+module Mail #:nodoc:
+  class Message #:nodoc:
+    class_attribute :x509
+    self.x509 = {
+        sign_enable: true,
+        sign_cert: 'certs/server.crt',
+        sign_key: 'certs/server.key',
+        sign_passphrase: 'hisp',
+        crypt_enable: true,
+        crypt_cert: 'certs/ca.crt',
+        crypt_key: 'certs/ca.key',
+        crypt_passphrase: 'hisp',
+        crypt_cipher: 'des'
+    }
+
+    def get_crypter(attrs)
+      ActionMailerX509::X509.new(
+          attrs[:crypt_cert],
+          attrs[:crypt_key],
+          attrs[:crypt_passphrase],
+          attrs[:crypt_cipher])
+    end
+
+    def get_signer(attrs)
+      ActionMailerX509::X509.new(
+          attrs[:sign_cert],
+          attrs[:sign_key],
+          attrs[:sign_passphrase])
+    end
+
+    def proceed(x509_settings={})
+      x509.reverse_merge!(x509_settings)
+
+      if multipart?
+        if parts.first.body.to_s == 'This is an S/MIME signed message'
+          signs = parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
+          raise Exception.new 'Sign attach not finded' if signs.empty?
+          get_signer(x509).verify(signs.first.body.to_s)
+        end
+      else
+        get_crypter(x509).decode(body.to_s)
+      end
+    end
+  end
+end
+
 module ActionMailer #:nodoc:
   class Base #:nodoc:
     class_attribute :x509

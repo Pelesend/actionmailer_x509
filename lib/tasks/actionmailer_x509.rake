@@ -6,6 +6,16 @@ require 'actionmailer_x509/x509'
 
 
 namespace :actionmailer_x509 do
+  #task :all do
+  #  Rake.application.in_namespace(:actionmailer_x509) do |x|
+  #    x.tasks.each do |task|
+  #      unless task.to_s == 'actionmailer_x509:all'
+  #        Rake::Task[task].invoke
+  #      end
+  #    end
+  #  end
+  #end
+
   desc "Sending a mail that can be signed and\\or crypted, for test."
   task(:send_test => :environment) do
     email = ENV['email']
@@ -24,80 +34,116 @@ namespace :actionmailer_x509 do
       end || false
       crypted = Boolean(ENV['crypted'])
 
-      noty = Notifier.fufu_signed_and_or_crypted(email, "demo@foobar.com", "Signed mail at #{Time.now.to_s}", {:signed => signed, :crypted => crypted})
+      noty = Notifier.fufu_signed_and_or_crypted(email, 'demo@foobar.com', "Signed mail at #{Time.now.to_s}", {:signed => signed, :crypted => crypted})
       noty.deliver
     end
   end
 
-  desc "Generates a signed mail in a file."
+  desc 'Generates a signed mail in a file.'
   task(:generate_signed_mail => :environment) do
-    mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
+    mail = Notifier.fufu_signed('<destination@foobar.com>', '<demo@foobar.com>')
     path = ENV['mail']
     path = "tmp/signed_mail.txt" if path.nil?
     File.open(path, "w") do |f|
       f.write mail.body
     end
-    puts "Signed mail is at #{path}."
-    puts "You can use mail=filename as argument to change it." if ENV['mail'].nil?
+    puts 'Signed mail is at #{path}.'
+    puts 'You can use mail=filename as argument to change it.' if ENV['mail'].nil?
   end
 
-  desc "Check if signature is valid."
+  desc 'Check if signature is valid.'
   task(:verify_signature => :environment) do
+    require 'tempfile'
+    mail = Notifier.fufu_signed('<destination@foobar.com>', '<demo@foobar.com>')
+    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
+
+    verified = ActionMailerX509::X509.new(
+        Notifier.x509[:sign_cert],
+        Notifier.x509[:sign_key],
+        Notifier.x509[:sign_passphrase]).verify(mail.encoded)
+
+    puts "Verification is #{set_format(verified.to_s) == set_format(raw_mail.body.to_s)}"
+  end
+
+  desc 'Check if signature is valid by openssl.'
+  task(:verify_signature_by_openssl => :environment) do
     require 'tempfile'
     mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
 
-    coded = ActionMailerX509::X509.new(
-        Notifier.x509[:crypt_cert],
-        Notifier.x509[:crypt_key],
-        Notifier.x509[:crypt_passphrase],
-        Notifier.x509[:crypt_cipher]).decode(mail.encoded)
+    tf = Tempfile.new('actionmailer_x509')
+    tf.write mail.encoded
+    tf.flush
 
-    puts "Verifycation is #{coded == Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>").encoded}"
+    comm = "openssl smime -verify -in #{tf.path} -CAfile #{File.dirname(__FILE__)}/../../#{Notifier.x509[:sign_cert]} > /dev/null"
 
-
-    #tf = Tempfile.new('actionmailer_x509')
-    #tf.write mail.encoded
-    #tf.flush
-
-    #comm = "openssl smime -verify -in #{tf.path} -CAfile #{File.dirname(__FILE__)}/../certs/ca.crt > /dev/null"
-    #
-    #puts "Using openssl command to verify signature..."
-    #system(comm)
+    puts "Using openssl command to verify signature..."
+    system(comm)
   end
 
-  desc "Generates a crypted mail in a file."
+  desc 'Generates a crypted mail in a file.'
   task(:generate_crypted_mail => :environment) do
-    mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
-    path = ENV['mail']
-    path = "tmp/signed_mail.txt" if path.nil?
+    mail = Notifier.fufu_crypted('<destination@foobar.com>', '<demo@foobar.com>')
+    path = ENV['mail'] || 'tmp/signed_mail.txt'
+
     File.open(path, "w") do |f|
       f.write mail.body
     end
+
     puts "Crypted mail is at #{path}."
-    puts "You can use mail=filename as argument to change it." if ENV['mail'].nil?
+    puts 'You can use mail=filename as argument to change it.' if ENV['mail'].nil?
   end
 
-  desc "Performance test."
+  desc 'Check crypt.'
+  task(:verify_crypt => :environment) do
+    require 'tempfile'
+    mail = Notifier.fufu_crypted('<destination@foobar.com>', '<demo@foobar.com>')
+    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
+
+    decrypted = ActionMailerX509::X509.new(
+        Notifier.x509[:crypt_cert],
+        Notifier.x509[:crypt_key],
+        Notifier.x509[:crypt_passphrase]).decode(mail.encoded)
+
+    #puts '*' * 100
+    #puts raw_mail
+    #puts '*' * 100
+    #puts mail.encoded
+    #puts '*' * 100
+    #puts decrypted
+    #puts '*' * 100
+
+    puts "Crypt verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
+  end
+
+  desc 'Performance test.'
   task(:performance_test => :environment) do
     require 'benchmark'
 
     n = 100
     Benchmark.bm do |x|
-      x.report("#{n} mails without signature: ") {
-        for i in 1..n do
-          Notifier.fufu("<destination@foobar.com>", "<demo@foobar.com>")
-        end
+      x.report("#{n} raw mails: ".ljust(40)) {
+        n.times { Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>') }
       }
-      x.report("#{n} mails with signature: ") {
-        for i in 1..n do
-          Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
-        end
+      x.report("#{n} mails with signature: ".ljust(40)) {
+        n.times { Notifier.fufu_signed('<destination@foobar.com>', '<demo@foobar.com>') }
+      }
+
+      x.report("#{n} crypted mails: ".ljust(40)) {
+        n.times { Notifier.fufu_crypted('<destination@foobar.com>', '<demo@foobar.com>') }
+      }
+
+      x.report("#{n} crypted and signed mails: ".ljust(40)) {
+        n.times { Notifier.fufu_signed_and_crypted('<destination@foobar.com>', '<demo@foobar.com>') }
       }
     end
   end
 end
 
 private
+
+def set_format(text)
+  text.gsub("\r\n", "\n")
+end
 
 def Boolean(string)
   return true if string == true || string =~ /^true$/i

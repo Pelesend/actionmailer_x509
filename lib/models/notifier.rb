@@ -3,32 +3,32 @@ class Notifier < ActionMailer::Base #:nodoc:
   self.prepend_view_path("#{File.dirname(__FILE__)}/../views/")
 
   self.x509 = {
-    sign_cert: "lib/certs/server.crt",
-    sign_key: "lib/certs/server.key",        
-    sign_passphrase: "demo",
-    crypt_key: "lib/certs/ca.key",
-    crypt_cert: "lib/certs/ca.crt",
+    sign_cert: 'lib/certs/cert.crt',
+    sign_key: 'lib/certs/cert.key',
+    sign_passphrase: 'demo',
+    crypt_key: 'lib/certs/cert.key',
+    crypt_cert: 'lib/certs/cert.crt',
     crypt_passphrase: 'demo',
     crypt_cipher: 'des'
   }
 
-  def fufu(email, from, subject = "Empty subject")
+  def fufu(email, from, subject = 'Empty subject')
     fufu_signed_and_or_crypted(email, from, subject)
   end
 
-  def fufu_signed(email, from, subject = "Empty subject for signed")
+  def fufu_signed(email, from, subject = 'Empty subject for signed')
     fufu_signed_and_or_crypted(email, from, subject,  {signed: true, crypted: false })
   end
 
-  def fufu_crypted(email, from, subject = "Empty subject for encrypted")
+  def fufu_crypted(email, from, subject = 'Empty subject for encrypted')
     fufu_signed_and_or_crypted(email, from, subject, {signed: false, crypted: true })
   end
 
-  def fufu_signed_and_crypted(email, from, subject = "Empty subject for signed and encrypted")
+  def fufu_signed_and_crypted(email, from, subject = 'Empty subject for signed and encrypted')
     fufu_signed_and_or_crypted(email, from, subject, { signed: true, crypted: true })
   end
 
-  def fufu_signed_and_or_crypted(email, from, subject = "Empty subject", options = {})
+  def fufu_signed_and_or_crypted(email, from, subject = 'Empty subject', options = {})
     self.x509[:crypt_enable] = options[:crypted]
     self.x509[:sign_enable] = options[:signed]
 
