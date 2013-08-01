@@ -118,7 +118,6 @@ namespace :actionmailer_x509 do
   task(:verify_crypt_by_openssl => :environment) do
     require 'tempfile'
     mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
-    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
 
     tf = Tempfile.new('actionmailer_x509')
     tf.write mail.encoded

@@ -67,7 +67,11 @@ module Mail #:nodoc:
 
       if multipart?
         if is_signed?
-          get_signer.verify(encoded)
+          buffer = header.encoded
+          buffer << "\r\n"
+          buffer << body.to_s
+
+          get_signer.verify(buffer)
         end || body.to_s
       else
         result = get_crypter.decode(body.to_s)
