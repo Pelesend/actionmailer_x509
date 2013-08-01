@@ -21,8 +21,8 @@ module ActionMailerX509
     def decode(encrypted_text)
       pkcs7 = read(encrypted_text)
       pkcs7.decrypt(@rsa_key, certificate)
-    #rescue
-    #  encrypted_text
+    rescue
+      encrypted_text
     end
 
     def sign(text)
