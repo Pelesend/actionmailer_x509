@@ -5,15 +5,27 @@ module X509Wrapper
     base.send :class_attribute, :x509
     base.x509 = {
         sign_enable: true,
-        sign_cert: 'certs/server.crt',
-        sign_key: 'certs/server.key',
-        sign_passphrase: 'hisp',
         crypt_enable: true,
-        crypt_cert: 'certs/ca.crt',
-        crypt_key: 'certs/ca.key',
-        crypt_passphrase: 'hisp',
+        sign_cert: "#{File.dirname(__FILE__)}/../../certs/cert.crt",
+        sign_key: "#{File.dirname(__FILE__)}/../../certs/cert.key",
+        sign_passphrase: 'demo',
+        crypt_cert: "#{File.dirname(__FILE__)}/../../certs/cert.crt",
+        crypt_key: "#{File.dirname(__FILE__)}/../../certs/cert.key",
+        crypt_passphrase: 'demo',
         crypt_cipher: 'des'
     }
+
+    #base.x509 = {
+    #    sign_enable: true,
+    #    sign_cert: 'certs/server.crt',
+    #    sign_key: 'certs/server.key',
+    #    sign_passphrase: 'hisp',
+    #    crypt_enable: true,
+    #    crypt_cert: 'certs/ca.crt',
+    #    crypt_key: 'certs/ca.key',
+    #    crypt_passphrase: 'hisp',
+    #    crypt_cipher: 'des'
+    #}
   end
 
   def get_crypter

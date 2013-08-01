@@ -31,6 +31,8 @@ module ActionMailerX509
     end
 
     def verify(text)
+      puts text.gsub("\r\n", "\n")
+      puts text.gsub("\r\n", "\n").length
       result = read(text).verify(nil, @certificate_store, nil, nil)
       #read(text).verify(nil, @certificate_store, nil, OpenSSL::PKCS7::NOVERIFY)
       result ? read(text).data : 'Verification failed'

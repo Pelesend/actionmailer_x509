@@ -2,14 +2,12 @@ require 'actionmailer_x509'
 class Notifier < ActionMailer::Base #:nodoc:
   self.prepend_view_path("#{File.dirname(__FILE__)}/../views/")
 
-  x509 = {
-      sign_enable: true,
-      sign_cert: 'lib/certs/cert.crt',
-      sign_key: 'lib/certs/cert.key',
+  self.x509 = {
+      sign_cert: "#{File.dirname(__FILE__)}/../../certs/cert.crt",
+      sign_key: "#{File.dirname(__FILE__)}/../../certs/cert.key",
       sign_passphrase: 'demo',
-      crypt_enable: true,
-      crypt_cert: 'lib/certs/cert.crt',
-      crypt_key: 'lib/certs/cert.key',
+      crypt_cert: "#{File.dirname(__FILE__)}/../../certs/cert.crt",
+      crypt_key: "#{File.dirname(__FILE__)}/../../certs/cert.key",
       crypt_passphrase: 'demo',
       crypt_cipher: 'des'
   }

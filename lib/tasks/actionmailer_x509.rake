@@ -42,12 +42,11 @@ namespace :actionmailer_x509 do
   desc 'Generates a signed mail in a file.'
   task(:generate_signed_mail => :environment) do
     mail = Notifier.fufu_signed('<destination@foobar.com>', '<demo@foobar.com>')
-    path = ENV['mail']
-    path = "tmp/signed_mail.txt" if path.nil?
-    File.open(path, "w") do |f|
+    path = ENV['mail'] || Rails.root.join('certs/signed_mail.txt')
+    File.open(path, 'wb') do |f|
       f.write mail.body
     end
-    puts 'Signed mail is at #{path}.'
+    puts "Signed mail is at #{path}"
     puts 'You can use mail=filename as argument to change it.' if ENV['mail'].nil?
   end
 
@@ -59,12 +58,11 @@ namespace :actionmailer_x509 do
 
     verified = mail.proceed(Notifier.x509)
 
-    puts '*' * 100
-    puts set_format(raw_mail.body.to_s)
-    puts '*' * 100
-    puts set_format(verified.to_s)
-    puts '*' * 100
-
+    #puts '*' * 100
+    #puts set_format(raw_mail.body.to_s)
+    #puts '*' * 100
+    #puts set_format(verified.to_s)
+    #puts '*' * 100
 
     puts "Verification is #{set_format(verified.to_s) == set_format(raw_mail.body.to_s)}"
   end
@@ -87,14 +85,14 @@ namespace :actionmailer_x509 do
   desc 'Generates a crypted mail in a file.'
   task(:generate_crypted_mail => :environment) do
     mail = Notifier.fufu_crypted('<destination@foobar.com>', '<demo@foobar.com>')
-    path = ENV['mail'] || 'tmp/signed_mail.txt'
+    path = ENV['mail'] || Rails.root.join('certs/cripted_mail.txt')
 
-    File.open(path, "w") do |f|
+    File.open(path, 'wb') do |f|
       f.write mail.body
     end
 
-    puts "Crypted mail is at #{path}."
-    puts 'You can use mail=filename as argument to change it.' if ENV['mail'].nil?
+    p "Crypted mail is at #{path}"
+    p 'You can use mail=filename as argument to change it.' if ENV['mail'].nil?
   end
 
   desc 'Check crypt.'
@@ -120,14 +118,15 @@ namespace :actionmailer_x509 do
   task(:verify_crypt_by_openssl => :environment) do
     require 'tempfile'
     mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
+    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
 
     tf = Tempfile.new('actionmailer_x509')
     tf.write mail.encoded
     tf.flush
 
-    comm = "openssl smime -decrypt -in #{tf.path} -recip #{build_path(Notifier.x509[:crypt_cert])} -inkey #{build_path(Notifier.x509[:crypt_key])} > /dev/null"
-    puts 'Using openssl command to verify signature...'
-    system(comm)
+    comm = "openssl smime -decrypt -passin pass:#{Notifier.x509[:crypt_passphrase]} -in #{tf.path} -recip #{build_path(Notifier.x509[:crypt_cert])} -inkey #{build_path(Notifier.x509[:crypt_key])} > /dev/null"
+    puts 'Using openssl command to verify crypted code...'
+    puts "Crypt verification is #{system(comm)}"
   end
 
   desc 'Check sign and crypt.'
@@ -137,8 +136,10 @@ namespace :actionmailer_x509 do
     raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
 
     decrypted = mail.proceed(Notifier.x509)
+    puts decrypted
+    puts raw_mail.body
 
-    puts "Crypt verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
+    puts "Verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
   end
 
   desc 'Performance test.'
@@ -168,7 +169,8 @@ end
 private
 
 def build_path(path)
-  "#{File.dirname(__FILE__)}/../../#{path}"
+  #"#{File.dirname(__FILE__)}/../../#{path}"
+  path
 end
 
 def set_format(text)
