@@ -34,27 +34,27 @@ require 'openssl'
 
 #module String
 #def proceed(mail, x509_settings={})
-  #x509.reverse_merge!(x509_settings)
-  #
-  #if mail.is_a? String
-  #  if
-  #
-  #
-  #  result = get_crypter(x509).decode(mail)
-  #
-  #
-  #elsif mail.is_a? Mail::Message
-  #  mail.proceed(x509_settings)
-  #  #if mail.multipart?
-  #  #  if mail.parts.first.body.to_s == 'This is an S/MIME signed message'
-  #  #    signs = mail.parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
-  #  #    raise Exception.new 'Sign attach not finded' if signs.empty?
-  #  #    get_signer(x509).verify(signs.first.body.to_s)
-  #  #  end
-  #  #else
-  #  #  get_crypter(x509).decode(mail.body.to_s)
-  #  #end
-  #end || mail.to_s
+#x509.reverse_merge!(x509_settings)
+#
+#if mail.is_a? String
+#  if
+#
+#
+#  result = get_crypter(x509).decode(mail)
+#
+#
+#elsif mail.is_a? Mail::Message
+#  mail.proceed(x509_settings)
+#  #if mail.multipart?
+#  #  if mail.parts.first.body.to_s == 'This is an S/MIME signed message'
+#  #    signs = mail.parts.select { |p| p.content_type == 'application/x-pkcs7-signature'}
+#  #    raise Exception.new 'Sign attach not finded' if signs.empty?
+#  #    get_signer(x509).verify(signs.first.body.to_s)
+#  #  end
+#  #else
+#  #  get_crypter(x509).decode(mail.body.to_s)
+#  #end
+#end || mail.to_s
 #end
 #end
 
@@ -65,29 +65,15 @@ module Mail #:nodoc:
     def proceed(x509_settings={})
       x509.reverse_merge!(x509_settings)
 
-      if multipart?
-        if is_signed?
-          #PATCH: body.encoded return wrong result in encoded func
-          buffer = header.encoded
-          buffer << "\r\n"
-          buffer << body.to_s
-
-          get_signer.verify(buffer)
-          #PATCH END
-
-          #get_signer.verify(encoded)
-        end || body.encoded
-      else
+      if is_signed?
+        get_signer.verify(patched_encoded)
+        #get_signer.verify(encoded)
+      elsif is_crypted?
         result = get_crypter.decode(body.to_s)
-        if result
-          mail = Mail.new(result)
-          if mail.is_signed?
-            mail.proceed(x509_settings)
-          else
-            result
-          end
-        end || body.encoded
-      end
+        if result && (mail = Mail.new(result)).body.encoded.length > 0
+          mail.proceed(x509_settings)
+        end || result || body.encoded
+      end || body.encoded
     end
 
     #def method_missing(name, *args, &block)
@@ -97,17 +83,29 @@ module Mail #:nodoc:
     #end
 
     protected
-      def is_signed?
-        check_parts || check_body
-      end
+    #PATCH: body.encoded return wrong result in encoded func
+    def patched_encoded
+      buffer = header.encoded
+      buffer << "\r\n"
+      buffer << body.to_s
+      buffer
+    end
 
-      def check_parts
-        (parts.first.body.to_s == 'This is an S/MIME signed message') rescue false
-      end
+    def is_crypted?
+      (header['Content-Type'].encoded =~ /application\/x-pkcs[0-9]+-mime/).present?
+    end
 
-      def check_body
-        (body.to_s =~ /This is an S\/MIME signed message/).present?
-      end
+    def is_signed?
+      check_parts || check_body
+    end
+
+    def check_parts
+      (parts.first.body.to_s == 'This is an S/MIME signed message') rescue false
+    end
+
+    def check_body
+      (body.to_s =~ /This is an S\/MIME signed message/).present?
+    end
   end
 end
 
@@ -122,7 +120,7 @@ module ActionMailer #:nodoc:
       x509_smime(message) if self.x509[:sign_enable] || self.x509[:crypt_enable]
     end
 
-  private
+    private
     # X509 SMIME signing and\or crypting
     def x509_smime(message)
       @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
