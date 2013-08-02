@@ -6,14 +6,18 @@ require 'actionmailer_x509/x509'
 
 
 namespace :actionmailer_x509 do
-  task :all do
-    Rake.application.in_namespace(:actionmailer_x509) do |x|
-      x.tasks.each do |task|
-        unless task.to_s == 'actionmailer_x509:all'
-          Rake::Task[task].invoke
-        end
-      end
-    end
+  task :all_checks do
+    puts '*' * 20 << 'SIGN VERIFICATION'
+    Rake::Task['actionmailer_x509:verify_signature'].invoke
+    puts '*' * 20 << 'OPENSSL SIGN VERIFICATION'
+    Rake::Task['actionmailer_x509:verify_signature_by_openssl'].invoke
+    puts '*' * 20 << 'CRYPT VERIFICATION'
+    Rake::Task['actionmailer_x509:verify_crypt'].invoke
+    puts '*' * 20 << 'OPENSSL CRYPT VERIFICATION'
+    Rake::Task['actionmailer_x509:verify_crypt_by_openssl'].invoke
+    puts '*' * 20 << 'SIGN AND CRYPT VERIFICATION'
+    Rake::Task['actionmailer_x509:verify_sign_and_crypt'].invoke
+    puts '*' * 20
   end
 
   desc "Sending a mail that can be signed and\\or crypted, for test."

@@ -67,11 +67,14 @@ module Mail #:nodoc:
 
       if multipart?
         if is_signed?
+          #PATCH: body.encoded return wrong result in encoded func
           buffer = header.encoded
           buffer << "\r\n"
           buffer << body.to_s
 
           get_signer.verify(buffer)
+          #PATCH END
+
           #get_signer.verify(encoded)
         end || body.to_s
       else
@@ -127,6 +130,7 @@ module ActionMailer #:nodoc:
       p.header.fields.each {|field| (message.header[field.name] = field.value)}
 
       if @coded
+        #PATCH: header field 'Content-Transfer-Encoding' is not copied by the some mystic reasons
         message.header['Content-Transfer-Encoding'] = 'base64'
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       else
