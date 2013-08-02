@@ -114,25 +114,23 @@ module ActionMailer #:nodoc:
 
     def mail(headers = {}, &block)
       message = old_mail(headers, &block)
-      x509_smime(message)
+      x509_smime(message) if self.x509[:sign_enable] || self.x509[:crypt_enable]
     end
 
   private
     # X509 SMIME signing and\or crypting
     def x509_smime(message)
-      if self.x509[:sign_enable] || self.x509[:crypt_enable]
-        @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
-        @coded = get_crypter.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
+      @signed = get_signer.sign(message.body.to_s) if self.x509[:sign_enable] #message.encoded
+      @coded = get_crypter.encode(@signed || message.body.to_s) if self.x509[:crypt_enable]
 
-        p = Mail.new(@coded || @signed)
-        p.header.fields.each {|field| (message.header[field.name] = field.value)}
+      p = Mail.new(@coded || @signed)
+      p.header.fields.each {|field| (message.header[field.name] = field.value)}
 
-        if @coded
-          message.header['Content-Transfer-Encoding'] = 'base64'
-          message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
-        else
-          message.body = p.body.to_s
-        end
+      if @coded
+        message.header['Content-Transfer-Encoding'] = 'base64'
+        message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
+      else
+        message.body = p.body.to_s
       end
       message
     end

@@ -135,9 +135,6 @@ namespace :actionmailer_x509 do
     raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
 
     decrypted = mail.proceed(Notifier.x509)
-    puts decrypted
-    puts raw_mail.body
-
     puts "Verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
   end
 
