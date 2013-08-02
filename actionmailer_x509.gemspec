@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = "actionmailer_x509"
-  s.version = "0.4.1"
+  s.version = "0.4.2"
   s.authors = ["Jenua Boiko", "petRUShka", "Fabien Penso", "CONOVAE"]
   s.email = "jeyboy1985@gmail.com"
   s.files = `git ls-files`.split("\n")

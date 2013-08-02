@@ -76,15 +76,17 @@ module Mail #:nodoc:
           #PATCH END
 
           #get_signer.verify(encoded)
-        end || body.to_s
+        end || body.encoded
       else
         result = get_crypter.decode(body.to_s)
-        mail = Mail.new(result)
-        if mail.is_signed?
-          mail.proceed(x509_settings)
-        else
-          result
-        end
+        if result
+          mail = Mail.new(result)
+          if mail.is_signed?
+            mail.proceed(x509_settings)
+          else
+            result
+          end
+        end || body.encoded
       end
     end
 
@@ -135,6 +137,7 @@ module ActionMailer #:nodoc:
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       else
         message.body = p.body.to_s
+        #message.content_type = 'multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1; '
       end
       message
     end
