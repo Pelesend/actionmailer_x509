@@ -1,16 +1,7 @@
 require 'actionmailer_x509'
 class Notifier < ActionMailer::Base #:nodoc:
+  x509_configuration :test
   self.prepend_view_path("#{File.dirname(__FILE__)}/../views/")
-
-  self.x509 = {
-      sign_cert: "#{File.dirname(__FILE__)}/../../certs/cert.crt",
-      sign_key: "#{File.dirname(__FILE__)}/../../certs/cert.key",
-      sign_passphrase: 'demo',
-      crypt_cert: "#{File.dirname(__FILE__)}/../../certs/cert.crt",
-      crypt_key: "#{File.dirname(__FILE__)}/../../certs/cert.key",
-      crypt_passphrase: 'demo',
-      crypt_cipher: 'des'
-  }
 
   def fufu(email, from, subject = 'Empty subject')
     fufu_signed_and_or_crypted(email, from, subject)
