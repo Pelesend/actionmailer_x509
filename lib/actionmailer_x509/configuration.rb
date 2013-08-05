@@ -14,7 +14,6 @@ class Configuration
   self.crypt_cipher = 'des'
 
   class_attribute :certs_path
-  self.certs_path = Rails.root.join('certs')
 
   class_attribute :sign_cert
   class_attribute :sign_key
@@ -23,24 +22,32 @@ class Configuration
   class_attribute :crypt_key
   class_attribute :crypt_passphrase
 
+  def sign_require?
+    sign_enable == true
+  end
+
+  def crypt_require?
+    crypt_enable == true
+  end
+
   def certs_path=(path)
-    @certs_path = File.new(path)
+    @certs_path = Pathname.new(path)
   end
 
   def sign_cert
-    certs_path.join(super)
+    certs_path.join(@sign_cert)
   end
 
   def sign_key
-    certs_path.join(super)
+    certs_path.join(@sign_key)
   end
 
   def crypt_cert
-    certs_path.join(super)
+    certs_path.join(@crypt_cert)
   end
 
   def crypt_key
-    certs_path.join(super)
+    certs_path.join(@crypt_key)
   end
 
   def get_crypter

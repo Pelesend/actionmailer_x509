@@ -12,7 +12,7 @@ module Mail #:nodoc:
       elsif is_crypted?
         raise Exception.new('Configuration is nil') unless config
         result = config.get_crypter.decode(body.to_s)
-        if result && (mail = Mail.new(result)).body.encoded.length > 0
+        if result && (mail = Mail.new(result)).valid?
           mail.proceed(configuration)
         end || result || body.encoded
       end || body.encoded
@@ -25,6 +25,11 @@ module Mail #:nodoc:
     #end
 
     protected
+
+    def valid?
+      header['Content-Type'].present? && body.encoded.length > 0
+    end
+
     #PATCH: body.encoded return wrong result in encoded func
     def patched_encoded
       buffer = header.encoded

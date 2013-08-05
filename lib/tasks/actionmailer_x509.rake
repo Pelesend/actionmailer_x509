@@ -20,33 +20,10 @@ namespace :actionmailer_x509 do
     puts '*' * 20
   end
 
-  #desc "Sending a mail that can be signed and\\or crypted, for test."
-  #task(:send_test => :environment) do
-  #  email = ENV['email']
-  #  if email.nil?
-  #    puts "You should call the rake task like\nrake actionmailer_x509:send_test email=yourmail@yourdomain.com signed=true crypted=false\n"
-  #  else
-  #    puts "Note: Please make sure you have configured ActionMailer."
-  #    puts "The mail sent might be stoped by antispam."
-  #    puts "If you wish to verify the signature, please include"
-  #    puts "#{File.dirname(__FILE__)}/../certs/ca.crt"
-  #    puts "as an authority in your MUA. Remove it after your test!!!\n\n"
-  #    puts "Emailing <#{email}>"
-  #
-  #    signed = if ENV['signed']
-  #      Boolean(ENV['signed'])
-  #    end || false
-  #    crypted = Boolean(ENV['crypted'])
-  #
-  #    noty = Notifier.fufu_signed_and_or_crypted(email, 'demo@foobar.com', "Signed mail at #{Time.now.to_s}", {:signed => signed, :crypted => crypted})
-  #    noty.deliver
-  #  end
-  #end
-
   desc 'Generates a signed mail in a file.'
   task(:generate_signed_mail => :environment) do
     add_config(true, false)
-    mail = Notifier.fufu_signed('<destination@foobar.com>', '<demo@foobar.com>')
+    mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
     path = ENV['mail'] || Rails.root.join('certs/signed_mail.txt')
     File.open(path, 'wb') do |f|
       f.write mail.body
@@ -58,26 +35,22 @@ namespace :actionmailer_x509 do
   desc 'Check if signature is valid.'
   task(:verify_signature => :environment) do
     require 'tempfile'
+    add_config(false, false)
+    raw_mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
+
     add_config(true, false)
-    mail = Notifier.fufu_signed('<destination@foobar.com>', '<demo@foobar.com>')
-    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
+    mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
-    verified = mail.proceed(Notifier.x509)
-
-    #puts '*' * 100
-    #puts set_format(raw_mail.body.to_s)
-    #puts '*' * 100
-    #puts set_format(verified.to_s)
-    #puts '*' * 100
-
+    verified = mail.proceed(Notifier.x509_configuration)
     puts "Verification is #{set_format(verified.to_s) == set_format(raw_mail.body.to_s)}"
   end
 
   desc 'Check if signature is valid by openssl.'
   task(:verify_signature_by_openssl => :environment) do
-    add_config(true, false)
     require 'tempfile'
-    mail = Notifier.fufu_signed("<destination@foobar.com>", "<demo@foobar.com>")
+
+    add_config(true, false)
+    mail = Notifier.fufu("<destination@foobar.com>", "<demo@foobar.com>")
 
     tf = Tempfile.new('actionmailer_x509')
     tf.write mail.encoded
@@ -93,7 +66,7 @@ namespace :actionmailer_x509 do
   desc 'Generates a crypted mail in a file.'
   task(:generate_crypted_mail => :environment) do
     add_config(false, true)
-    mail = Notifier.fufu_crypted('<destination@foobar.com>', '<demo@foobar.com>')
+    mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
     path = ENV['mail'] || Rails.root.join('certs/cripted_mail.txt')
 
     File.open(path, 'wb') do |f|
@@ -106,47 +79,42 @@ namespace :actionmailer_x509 do
 
   desc 'Check crypt.'
   task(:verify_crypt => :environment) do
-    require 'tempfile'
-    mail = Notifier.fufu_crypted('<destination@foobar.com>', '<demo@foobar.com>')
-    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
+    add_config(false, false)
+    raw_mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
-    decrypted = mail.proceed(Notifier.x509)
+    add_config(false, true)
+    mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
-    #puts '*' * 100
-    #puts raw_mail
-    #puts '*' * 100
-    #puts mail.encoded
-    #puts '*' * 100
-    #puts decrypted
-    #puts '*' * 100
-
+    decrypted = mail.proceed(Notifier.x509_configuration)
     puts "Crypt verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
   end
 
   desc 'Check if crypt text is valid by openssl.'
   task(:verify_crypt_by_openssl => :environment) do
-    add_config(false, true)
     require 'tempfile'
-    mail = Notifier.fufu_crypted("<destination@foobar.com>", "<demo@foobar.com>")
+
+    add_config(false, true)
+    mail = Notifier.fufu("<destination@foobar.com>", "<demo@foobar.com>")
 
     tf = Tempfile.new('actionmailer_x509')
     tf.write mail.encoded
     tf.flush
     configuration = ActionMailerX509.get_configuration(Notifier.x509_configuration)
 
-    comm = "openssl smime -decrypt -passin pass:#{Notifier.x509[:crypt_passphrase]} -in #{tf.path} -recip #{configuration.crypt_cert} -inkey #{configuration.crypt_key} > /dev/null"
+    comm = "openssl smime -decrypt -passin pass:#{configuration.crypt_passphrase} -in #{tf.path} -recip #{configuration.crypt_cert} -inkey #{configuration.crypt_key} > /dev/null"
     puts 'Using openssl command to verify crypted code...'
     puts "Crypt verification is #{system(comm)}"
   end
 
   desc 'Check sign and crypt.'
   task(:verify_sign_and_crypt => :environment) do
-    add_config
-    require 'tempfile'
-    mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: true, crypted: true })
-    raw_mail = Notifier.fufu_signed_and_or_crypted('<destination@foobar.com>', '<demo@foobar.com>', 'Empty subject', { signed: false, crypted: false })
+    add_config(false, false)
+    raw_mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
-    decrypted = mail.proceed(Notifier.x509)
+    add_config
+    mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
+
+    decrypted = mail.proceed(Notifier.x509_configuration)
     puts "Verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
   end
 
@@ -190,6 +158,7 @@ def add_config(sign = true, crypt = true)
                                crypt_cert: 'ca.crt',
                                crypt_key: 'ca.key',
                                crypt_passphrase: 'hisp',
+                               certs_path: Rails.root.join('certs')
                            }
 end
 

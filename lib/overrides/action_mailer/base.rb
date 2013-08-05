@@ -4,11 +4,22 @@ module ActionMailer #:nodoc:
   class Base #:nodoc:
     class_attribute :x509_configuration
 
+    class << self
+      def x509_configuration(name = nil)
+        @x509_configuration = name if name
+        @x509_configuration
+      end
+    end
+
     alias_method :old_mail, :mail
+
+    def configuration
+      ActionMailerX509.get_configuration(self.class.x509_configuration)
+    end
 
     def mail(headers = {}, &block)
       message = old_mail(headers, &block)
-      x509_smime(message) if self.x509[:sign_enable] || self.x509[:crypt_enable]
+      x509_smime(message) if configuration.sign_require? || configuration.crypt_require?
     end
 
     private
@@ -17,8 +28,8 @@ module ActionMailer #:nodoc:
       config = ActionMailerX509.get_configuration(x509_configuration)
       raise Exception.new('Configuration is nil') unless config
 
-      @signed = config.get_signer.sign(message.body.to_s) if config.sign_enable == true #message.encoded
-      @coded = config.get_crypter.encode(@signed || message.body.to_s) if config.crypt_enable == true
+      @signed = config.get_signer.sign(message.body.to_s) if configuration.sign_require? #message.encoded
+      @coded = config.get_crypter.encode(@signed || message.body.to_s) if configuration.crypt_require?
 
       p = Mail.new(@coded || @signed)
       p.header.fields.each {|field| (message.header[field.name] = field.value)}
@@ -29,7 +40,6 @@ module ActionMailer #:nodoc:
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       else
         message.body = p.body.to_s
-        #message.content_type = 'multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1; '
       end
       message
     end
