@@ -39,7 +39,8 @@ module ActionMailer #:nodoc:
         message.header['Content-Transfer-Encoding'] = 'base64'
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       else
-        message.body = p.body.to_s
+        message.instance_variable_set :@body_raw, p.body.to_s
+        #message.body = p.body.to_s
       end
       message
     end

@@ -40,6 +40,9 @@ module ActionMailerX509
 
   mattr_accessor :default_configuration
 
+  mattr_accessor :newline_sequence
+  self.newline_sequence = "\n"
+
   class << self
     def settings
       yield self

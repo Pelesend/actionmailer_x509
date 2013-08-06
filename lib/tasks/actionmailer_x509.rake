@@ -42,7 +42,7 @@ namespace :actionmailer_x509 do
     mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
     verified = mail.proceed(Notifier.x509_configuration)
-    puts "Verification is #{set_format(verified.to_s) == set_format(raw_mail.body.to_s)}"
+    puts "Verification is #{verified.to_s == raw_mail.body.to_s}"
   end
 
   desc 'Check if signature is valid by openssl.'
@@ -86,7 +86,7 @@ namespace :actionmailer_x509 do
     mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
     decrypted = mail.proceed(Notifier.x509_configuration)
-    puts "Crypt verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
+    puts "Crypt verification is #{decrypted.to_s == raw_mail.body.to_s}"
   end
 
   desc 'Check if crypt text is valid by openssl.'
@@ -115,7 +115,7 @@ namespace :actionmailer_x509 do
     mail = Notifier.fufu('<destination@foobar.com>', '<demo@foobar.com>')
 
     decrypted = mail.proceed(Notifier.x509_configuration)
-    puts "Verification is #{set_format(decrypted.to_s) == set_format(raw_mail.body.to_s)}"
+    puts "Verification is #{decrypted.to_s == raw_mail.body.to_s}"
   end
 
   desc 'Performance test.'
@@ -160,10 +160,6 @@ def add_config(sign = true, crypt = true)
                                crypt_passphrase: 'hisp',
                                certs_path: Rails.root.join('certs')
                            }
-end
-
-def set_format(text)
-  text.gsub("\r\n", "\n")
 end
 
 def Boolean(string)

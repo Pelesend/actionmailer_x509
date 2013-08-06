@@ -20,7 +20,7 @@ module ActionMailerX509
 
     def decode(encrypted_text)
       pkcs7 = read(encrypted_text)
-      pkcs7.decrypt(@rsa_key, certificate)
+      set_format(pkcs7.decrypt(@rsa_key, certificate))
     rescue
       nil
     end
@@ -33,10 +33,14 @@ module ActionMailerX509
     def verify(text)
       result = read(text).verify(nil, @certificate_store, nil, nil)
       #read(text).verify(nil, @certificate_store, nil, OpenSSL::PKCS7::NOVERIFY)
-      result ? read(text).data : 'Verification failed'
+      result ? set_format(read(text).data) : 'Verification failed'
     end
 
     protected
+      def set_format(text)
+        text.gsub("\r\n", ActionMailerX509.newline_sequence)
+      end
+
       def write(pcks7)
         OpenSSL::PKCS7::write_smime pcks7
       end
