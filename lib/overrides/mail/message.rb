@@ -7,14 +7,14 @@ module Mail #:nodoc:
 
       if is_signed?
         raise Exception.new('Configuration is nil') unless config
-        config.get_signer.verify(patched_encoded)
-        #get_signer.verify(encoded)
-      elsif is_crypted?
-        raise Exception.new('Configuration is nil') unless config
-        result = config.get_crypter.decode(body.to_s)
+        # call patched_encoded
+        result = config.get_signer.verify(patched_encoded)
         if result && (mail = Mail.new(result)).valid?
           mail.proceed(configuration)
-        end || result || body.encoded
+        end || result
+      elsif is_crypted?
+        raise Exception.new('Configuration is nil') unless config
+        config.get_crypter.decode(body.to_s)
       end || body.encoded
     end
 

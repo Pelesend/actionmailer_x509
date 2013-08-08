@@ -28,10 +28,10 @@ module ActionMailer #:nodoc:
       config = ActionMailerX509.get_configuration(x509_configuration)
       raise Exception.new('Configuration is nil') unless config
 
-      @signed = config.get_signer.sign(message.body.to_s) if configuration.sign_require? #message.encoded
-      @coded = config.get_crypter.encode(@signed || message.body.to_s) if configuration.crypt_require?
+      @coded = config.get_crypter.encode(message.body.encoded) if configuration.crypt_require?
+      @signed = config.get_signer.sign(@coded || message.body.to_s) if configuration.sign_require?
 
-      p = Mail.new(@coded || @signed)
+      p = Mail.new(@signed || @coded)
       p.header.fields.each {|field| (message.header[field.name] = field.value)}
 
       if @coded
@@ -40,8 +40,8 @@ module ActionMailer #:nodoc:
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       else
         message.instance_variable_set :@body_raw, p.body.to_s
-        #message.body = p.body.to_s
       end
+      message.proceed
       message
     end
   end

@@ -33,7 +33,7 @@ module ActionMailerX509
     def verify(text)
       result = read(text).verify(nil, @certificate_store, nil, nil)
       #read(text).verify(nil, @certificate_store, nil, OpenSSL::PKCS7::NOVERIFY)
-      result ? set_format(read(text).data) : 'Verification failed'
+      result ? set_format(read(text).data) : nil
     end
 
     protected
