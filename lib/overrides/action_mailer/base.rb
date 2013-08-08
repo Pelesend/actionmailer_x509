@@ -34,14 +34,13 @@ module ActionMailer #:nodoc:
       p = Mail.new(@signed || @coded)
       p.header.fields.each {|field| (message.header[field.name] = field.value)}
 
-      if @coded
+      if @signed
+        message.instance_variable_set :@body_raw, p.body.to_s
+      else
         #PATCH: header field 'Content-Transfer-Encoding' is not copied by the some mystic reasons
         message.header['Content-Transfer-Encoding'] = 'base64'
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
-      else
-        message.instance_variable_set :@body_raw, p.body.to_s
       end
-      message.proceed
       message
     end
   end
