@@ -24,6 +24,10 @@ module Mail #:nodoc:
     #  end
     #end
 
+    def content
+      parts.empty? ? Mail::Part.new(body.encoded).encoded : body.encoded
+    end
+
     protected
 
     def valid?

@@ -20,7 +20,7 @@ module ActionMailerX509
 
     def decode(encrypted_text)
       pkcs7 = read(encrypted_text)
-      set_format(pkcs7.decrypt(@rsa_key, certificate))
+      pkcs7.decrypt(@rsa_key, certificate)
     rescue
       nil
     end
@@ -33,7 +33,7 @@ module ActionMailerX509
     def verify(text)
       result = read(text).verify(nil, @certificate_store, nil, nil)
       #read(text).verify(nil, @certificate_store, nil, OpenSSL::PKCS7::NOVERIFY)
-      result ? set_format(read(text).data) : nil
+      result ? read(text).data : nil
     end
 
     protected
