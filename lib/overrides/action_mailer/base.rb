@@ -28,8 +28,8 @@ module ActionMailer #:nodoc:
       config = ActionMailerX509.get_configuration(x509_configuration)
       raise Exception.new('Configuration is nil') unless config
 
-      @signed = config.get_signer.sign(message.body.to_s) if configuration.sign_require? #message.encoded
-      @coded = config.get_crypter.encode(@signed || message.body.to_s) if configuration.crypt_require?
+      @signed = config.get_signer.sign(message.encoded) if configuration.sign_require? #message.encoded
+      @coded = config.get_crypter.encode(@signed || message.encoded) if configuration.crypt_require?
 
       p = Mail.new(@coded || @signed)
       p.header.fields.each {|field| (message.header[field.name] = field.value)}
