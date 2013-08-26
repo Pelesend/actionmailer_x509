@@ -28,8 +28,8 @@ module ActionMailer #:nodoc:
       config = ActionMailerX509.get_configuration(x509_configuration)
       raise Exception.new('Configuration is nil') unless config
 
-      @signed = config.get_signer.sign(message.body.to_s) if configuration.sign_require? #message.encoded
-      @coded = config.get_crypter.encode(@signed || message.body.to_s) if configuration.crypt_require?
+      @signed = config.get_signer.sign(message.encoded) if configuration.sign_require? #message.encoded
+      @coded = config.get_crypter.encode(@signed || message.encoded) if configuration.crypt_require?
 
       p = Mail.new(@coded || @signed)
       p.header.fields.each {|field| (message.header[field.name] = field.value)}
@@ -39,8 +39,8 @@ module ActionMailer #:nodoc:
         message.header['Content-Transfer-Encoding'] = 'base64'
         message.instance_variable_set :@body_raw, Base64.encode64(p.body.to_s)
       else
-        message.instance_variable_set :@body_raw, p.body.to_s
-        #message.body = p.body.to_s
+        message.instance_variable_set :@body_raw, p.body.to_s.gsub(/(?:\A|\n)--#{p.body.boundary}(?=(?:--)?\s*$)/,"\r\n--#{p.body.boundary}")
+        message.body.split! p.body.boundary
       end
       message
     end
